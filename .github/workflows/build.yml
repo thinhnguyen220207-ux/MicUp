@@ -1,22 +1,12 @@
-name: Build & Release MicUp
+name: Build MicUp Debug APK
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag (e.g. v1.0.0)'
-        required: true
-        default: 'v1.0.0'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    permissions:
-      contents: write  # needed to create GitHub Release
 
     steps:
       - name: Checkout
@@ -47,51 +37,15 @@ jobs:
           gradle wrapper --gradle-version 8.6 --distribution-type bin
           chmod +x gradlew
 
-      - name: Cache CMake / FetchContent
-        uses: actions/cache@v4
-        with:
-          path: |
-            app/.cxx
-            ~/.cmake
-          key: ${{ runner.os }}-cmake-${{ hashFiles('app/src/main/cpp/CMakeLists.txt') }}
-          restore-keys: ${{ runner.os }}-cmake-
-
-      - name: Decode Keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > ${{ github.workspace }}/release.jks
-
-      - name: Build & Sign Release APK
+      - name: Build Debug APK
         env:
-          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
           ANDROID_NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/26.3.11579264
         run: |
-          ./gradlew assembleRelease --no-daemon \
-            -Pandroid.injected.signing.store.file=${{ github.workspace }}/release.jks \
-            -Pandroid.injected.signing.store.password=${{ secrets.STORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+          ./gradlew assembleDebug --no-daemon
 
-      - name: Rename APK
-        run: |
-          TAG=${{ github.event.inputs.tag || github.ref_name }}
-          echo "RELEASE_TAG=${TAG}" >> $GITHUB_ENV
-          mv app/build/outputs/apk/release/app-release.apk \
-             app/build/outputs/apk/release/MicUp-${TAG}.apk
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: MicUp ${{ env.RELEASE_TAG || github.ref_name }}
-          tag_name: ${{ env.RELEASE_TAG || github.ref_name }}
-          body: ''
-          files: app/build/outputs/apk/release/MicUp-*.apk
-          draft: true
-          prerelease: ${{ contains(env.RELEASE_TAG || github.ref_name, '-beta') || contains(env.RELEASE_TAG || github.ref_name, '-alpha') }}
-
-      - name: Upload Build Logs on Failure
-        if: failure()
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs
-          path: app/build/reports/
+          name: MicUp-Shared-Debug
+          path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7

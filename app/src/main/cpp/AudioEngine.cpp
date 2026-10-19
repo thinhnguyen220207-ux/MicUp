@@ -138,7 +138,7 @@ bool AudioEngine::openStreams() {
         ->setDeviceId(preferredInputId)
         ->setInputPreset(oboe::InputPreset::VoiceCommunication)
         ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
-        ->setSharingMode(oboe::SharingMode::Exclusive)
+        ->setSharingMode(oboe::SharingMode::Shared)
         ->setFormat(oboe::AudioFormat::Float)
         ->setChannelCount(1)
         ->setSampleRate(48000)
